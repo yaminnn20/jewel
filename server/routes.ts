@@ -103,45 +103,38 @@ export async function registerRoutes(app: Express): Promise<Server> {
         baseDesign = await storage.getBaseDesign(baseDesignId);
       }
 
-      // Try to use Gemini 2.0 Flash Thinking model which supports image generation
+      // Use Gemini 2.0 Flash for image generation
       const model = genAI.getGenerativeModel({ 
-        model: "gemini-2.0-flash-thinking-exp"
+        model: "gemini-2.0-flash-exp"
       });
 
       // Create a comprehensive prompt for image generation
-      let enhancedPrompt = `I need you to generate a jewelry design image. Here's what I want:
-
-User Request: "${prompt}"`;
+      let enhancedPrompt = `Generate a jewelry design image based on: "${prompt}"`;
       
       if (baseDesign) {
-        enhancedPrompt += `
-
-Base Design Context:
-- Type: ${baseDesign.category}
-- Name: ${baseDesign.name}
-- Description: ${baseDesign.description}
-- Materials: ${baseDesign.specifications?.materials?.join(', ') || 'Various luxury materials'}
-
-Please create a variation inspired by this base design.`;
+        enhancedPrompt += ` This should be a ${baseDesign.category} inspired by "${baseDesign.name}" - ${baseDesign.description}. Materials: ${baseDesign.specifications?.materials?.join(', ') || 'luxury materials'}.`;
       }
 
-      enhancedPrompt += `
+      enhancedPrompt += ` Create a professional jewelry photograph with white background, studio lighting, photorealistic detail, high quality suitable for luxury jewelry catalog.`;
 
-Image Requirements:
-- Generate an actual image (not text description)
-- Professional jewelry photography style
-- White studio background
-- Perfect lighting and shadows
-- High resolution and detail
-- Photorealistic quality
-- Focus on the jewelry piece
+      console.log("Sending image generation prompt to Gemini:", enhancedPrompt);
 
-Please output an image file showing the jewelry design.`;
-
-      console.log("Sending prompt to Gemini:", enhancedPrompt);
-
-      // Generate content with the model
-      const result = await model.generateContent(enhancedPrompt);
+      // Generate image using Gemini 2.0 Flash with proper image generation request
+      const result = await model.generateContent({
+        contents: [{
+          role: "user",
+          parts: [{
+            text: enhancedPrompt
+          }]
+        }],
+        generationConfig: {
+          temperature: 0.8,
+          topP: 0.9,
+          topK: 40,
+          maxOutputTokens: 8192,
+          responseMimeType: "image/png" // Request image output
+        }
+      });
       const response = await result.response;
       
       // Check if the response contains image data
