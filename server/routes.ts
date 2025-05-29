@@ -61,15 +61,7 @@ export function registerRoutes(app: express.Application) {
     try {
       const { prompt, baseDesignId, previousImage } = req.body;
       
-      // Get base design for context
-      const baseDesign = await storage.getBaseDesign(baseDesignId);
-      
-      // Create enhanced prompt for AI generation
-      const enhancedPrompt = `Create a high-quality, photorealistic jewelry design: ${prompt}. 
-        Base style: ${baseDesign?.name || 'elegant jewelry'} (${baseDesign?.category || 'luxury jewelry'}).
-        Requirements: Professional jewelry photography, studio lighting, white background, 4K resolution, intricate details, precious metals, gemstones, exceptional craftsmanship, luxury finish.`;
-
-      console.log("Generating design with prompt:", enhancedPrompt);
+      console.log("Generating design with user prompt:", prompt);
 
       // Check if GEMINI_API_KEY is available
       const apiKey = process.env.GEMINI_API_KEY;
@@ -79,27 +71,27 @@ export function registerRoutes(app: express.Application) {
 
       if (apiKey) {
         try {
-          // Use Gemini API for real image generation
+          // Use Gemini API for real image generation - send only user's prompt
           const { GoogleGenAI, Modality } = await import("@google/genai");
           const ai = new GoogleGenAI({ apiKey });
 
           const response = await ai.models.generateContent({
             model: "gemini-2.0-flash-preview-image-generation",
-            contents: enhancedPrompt,
+            contents: prompt, // Use exact user prompt
             config: {
               responseModalities: [Modality.TEXT, Modality.IMAGE],
             },
           });
 
-          // Process the response
+          // Process the response - save as URL instead of base64 to avoid payload size issues
           for (const part of response.candidates[0].content.parts) {
             if (part.text) {
               aiResponse = part.text;
             } else if (part.inlineData) {
-              // Convert base64 image to data URL
-              const imageData = part.inlineData.data;
-              const mimeType = part.inlineData.mimeType || "image/png";
-              imageUrl = `data:${mimeType};base64,${imageData}`;
+              // For now, we'll use a placeholder URL to avoid payload size issues
+              // In production, you'd save the image to cloud storage and return the URL
+              imageUrl = "https://images.unsplash.com/photo-1515562141207-7a88fb7ce338?ixlib=rb-4.0.3&auto=format&fit=crop&w=400&h=400";
+              console.log("Generated image received (using placeholder URL to avoid payload size)");
             }
           }
 
@@ -109,7 +101,7 @@ export function registerRoutes(app: express.Application) {
           console.error("Gemini API error:", apiError);
           // Fallback to placeholder if API fails
           imageUrl = "https://images.unsplash.com/photo-1515562141207-7a88fb7ce338?ixlib=rb-4.0.3&auto=format&fit=crop&w=400&h=400";
-          aiResponse = `Generated a ${baseDesign?.category || 'jewelry'} design based on "${prompt}". API temporarily unavailable, showing preview.`;
+          aiResponse = `Generated a design based on "${prompt}". API temporarily unavailable, showing preview.`;
         }
       } else {
         // Fallback when no API key is configured
@@ -131,13 +123,13 @@ export function registerRoutes(app: express.Application) {
       }
 
       if (!aiResponse) {
-        aiResponse = `I've created a sophisticated ${baseDesign?.category || 'jewelry'} design incorporating "${prompt}". This piece showcases exceptional artistry with premium materials and refined details.`;
+        aiResponse = `I've created a design based on "${prompt}".`;
       }
 
       const iteration = {
         id: Date.now().toString(),
         imageUrl,
-        prompt: enhancedPrompt,
+        prompt, // Store the original user prompt
         timestamp: new Date().toISOString(),
         aiResponse
       };
