@@ -10,7 +10,7 @@ const genAI = new GoogleGenerativeAI(process.env.GEMINI_API_KEY || process.env.G
 const imageGenAI = new GoogleGenAI({ apiKey: process.env.GEMINI_API_KEY || process.env.GOOGLE_AI_API_KEY || "" });
 
 export async function registerRoutes(app: Express): Promise<Server> {
-  
+
   // Base Designs Routes
   app.get("/api/base-designs", async (req, res) => {
     try {
@@ -105,26 +105,35 @@ export async function registerRoutes(app: Express): Promise<Server> {
         baseDesign = await storage.getBaseDesign(baseDesignId);
       }
 
-      // Create a comprehensive prompt for image generation
-      let enhancedPrompt = `Generate a jewelry design image based on: "${prompt}"`;
-      
-      if (baseDesign) {
-        enhancedPrompt += ` This should be a ${baseDesign.category} inspired by "${baseDesign.name}" - ${baseDesign.description}. Materials: ${baseDesign.specifications?.materials?.join(', ') || 'luxury materials'}.`;
+      const prompt = `Create a jewelry design variation based on this request: "${req.body.prompt}". 
+      Base design category: ${baseDesign?.category || 'jewelry'}
+      Base design name: ${baseDesign?.name || 'Custom Design'}
+
+      Please analyze the provided base design image and create a variation that incorporates the requested changes while maintaining the core characteristics of the original design.`;
+
+      // Fetch the base design image
+      let imageData = null;
+      if (baseDesign?.imageUrl) {
+        try {
+          const imageResponse = await fetch(baseDesign.imageUrl);
+          const imageBuffer = await imageResponse.arrayBuffer();
+          imageData = {
+            inlineData: {
+              data: Buffer.from(imageBuffer).toString('base64'),
+              mimeType: imageResponse.headers.get('content-type') || 'image/jpeg'
+            }
+          };
+        } catch (error) {
+          console.log("Could not fetch base design image, proceeding with text-only prompt");
+        }
       }
 
-      enhancedPrompt += ` Create a professional jewelry photograph with white background, studio lighting, photorealistic detail, high quality suitable for luxury jewelry catalog.`;
+      const requestContent = imageData ? [prompt, imageData] : [prompt];
 
-      console.log("Sending image generation prompt to Gemini:", enhancedPrompt);
+      const response = await genAI.getGenerativeModel({ 
+        model: "gemini-1.5-flash" 
+      }).generateContent(requestContent);
 
-      // Use the new Google GenAI SDK for image generation
-      const response = await imageGenAI.models.generateContent({
-        model: "gemini-2.0-flash-preview-image-generation",
-        contents: enhancedPrompt,
-        config: {
-          responseModalities: [Modality.TEXT, Modality.IMAGE],
-        },
-      });
-      
       // Process the response to extract text and image data
       let imageUrl = null;
       let aiResponse = "";
@@ -146,7 +155,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
         console.log("No image generated, using base design image");
         imageUrl = baseDesign?.imageUrl || "https://images.unsplash.com/photo-1605100804763-247f67b3557e?ixlib=rb-4.0.3&auto=format&fit=crop&w=600&h=600";
       }
-      
+
       const designIteration = {
         id: Date.now().toString(),
         prompt: prompt,
@@ -182,7 +191,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
       const model = genAI.getGenerativeModel({ model: "gemini-2.0-flash-exp" });
 
       let contextPrompt = "You are an expert jewelry designer and consultant. Help customers with their jewelry design questions and modifications.";
-      
+
       if (context) {
         contextPrompt += ` Current design context: ${JSON.stringify(context)}`;
       }
@@ -214,7 +223,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
             },
             chatResponse
           ];
-          
+
           await storage.updateDesignProject(projectId, {
             chatHistory: updatedChatHistory
           });
@@ -260,7 +269,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
     try {
       const projectId = parseInt(req.params.projectId);
       const project = await storage.getDesignProject(projectId);
-      
+
       if (!project) {
         return res.status(404).json({ message: "Project not found" });
       }
@@ -304,3 +313,4 @@ export async function registerRoutes(app: Express): Promise<Server> {
   const httpServer = createServer(app);
   return httpServer;
 }
+```
