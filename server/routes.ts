@@ -105,7 +105,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
         baseDesign = await storage.getBaseDesign(baseDesignId);
       }
 
-      const prompt = `Create a jewelry design variation based on this request: "${req.body.prompt}". 
+      const aiPrompt = `Create a jewelry design variation based on this request: "${req.body.prompt}". 
       Base design category: ${baseDesign?.category || 'jewelry'}
       Base design name: ${baseDesign?.name || 'Custom Design'}
 
@@ -128,7 +128,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
         }
       }
 
-      const requestContent = imageData ? [prompt, imageData] : [prompt];
+      const requestContent = imageData ? [aiPrompt, imageData] : [aiPrompt];
 
       const response = await genAI.getGenerativeModel({ 
         model: "gemini-1.5-flash" 
@@ -158,7 +158,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
 
       const designIteration = {
         id: Date.now().toString(),
-        prompt: prompt,
+        prompt: req.body.prompt,
         imageUrl: imageUrl,
         timestamp: new Date().toISOString(),
         aiResponse: aiResponse
@@ -196,9 +196,9 @@ export async function registerRoutes(app: Express): Promise<Server> {
         contextPrompt += ` Current design context: ${JSON.stringify(context)}`;
       }
 
-      const prompt = `${contextPrompt}\n\nCustomer message: ${message}\n\nProvide helpful, specific advice about jewelry design, materials, modifications, or styling. Keep responses concise and professional.`;
+      const chatPrompt = `${contextPrompt}\n\nCustomer message: ${message}\n\nProvide helpful, specific advice about jewelry design, materials, modifications, or styling. Keep responses concise and professional.`;
 
-      const result = await model.generateContent([prompt]);
+      const result = await model.generateContent([chatPrompt]);
       const response = await result.response;
       const text = response.text();
 
