@@ -82,7 +82,14 @@ export function registerRoutes(app: express.Application) {
           if (previousImage && !previousImage.startsWith('data:')) {
             try {
               console.log("Downloading previous image for iteration...");
-              const imageResponse = await fetch(previousImage);
+              
+              // Convert relative URLs to absolute URLs for local uploads
+              let imageUrl = previousImage;
+              if (previousImage.startsWith('/uploads/')) {
+                imageUrl = `http://localhost:5000${previousImage}`;
+              }
+              
+              const imageResponse = await fetch(imageUrl);
               
               if (!imageResponse.ok) {
                 throw new Error(`Failed to fetch image: ${imageResponse.status}`);
