@@ -97,14 +97,20 @@ export function registerRoutes(app: express.Application) {
               const imageBuffer = await imageResponse.arrayBuffer();
               
               // Resize image to reduce upload time (max 512x512)
-              const sharp = await import('sharp');
-              const resizedImageBuffer = await sharp.default(Buffer.from(imageBuffer))
-                .resize(512, 512, { 
-                  fit: 'inside',
-                  withoutEnlargement: true 
-                })
-                .jpeg({ quality: 80 })
-                .toBuffer();
+              let resizedImageBuffer;
+              try {
+                const sharp = require('sharp');
+                resizedImageBuffer = await sharp(Buffer.from(imageBuffer))
+                  .resize(512, 512, { 
+                    fit: 'inside',
+                    withoutEnlargement: true 
+                  })
+                  .jpeg({ quality: 80 })
+                  .toBuffer();
+              } catch (sharpError) {
+                console.log("Sharp processing failed, using original image");
+                resizedImageBuffer = Buffer.from(imageBuffer);
+              }
               
               const imageBase64 = resizedImageBuffer.toString('base64');
               const mimeType = 'image/jpeg';
@@ -143,6 +149,12 @@ export function registerRoutes(app: express.Application) {
             contents: contents,
             config: {
               responseModalities: [Modality.TEXT, Modality.IMAGE],
+              generationConfig: {
+                outputImageDimensions: {
+                  width: 512,
+                  height: 512
+                }
+              }
             },
           });
 
