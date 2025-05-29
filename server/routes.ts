@@ -105,35 +105,57 @@ export async function registerRoutes(app: Express): Promise<Server> {
 
       const model = genAI.getGenerativeModel({ model: "gemini-2.0-flash-exp" });
 
-      // Create enhanced prompt for jewelry design
-      let enhancedPrompt = `Create a high-quality, professional jewelry design based on the following description: ${prompt}`;
+      // Create enhanced prompt for jewelry design image generation
+      let enhancedPrompt = `Generate a high-quality, professional jewelry design image based on: ${prompt}`;
       
       if (baseDesign) {
         enhancedPrompt += ` This should be a variation of a ${baseDesign.category} style piece called "${baseDesign.name}" - ${baseDesign.description}.`;
       }
 
-      enhancedPrompt += ` The image should show a luxury jewelry piece with professional studio lighting, clean white background, highly detailed and photorealistic. Focus on craftsmanship, materials, and elegant presentation suitable for a high-end jewelry catalog.`;
+      enhancedPrompt += ` Create a luxury jewelry piece with professional studio lighting, clean white background, highly detailed and photorealistic. Focus on craftsmanship, materials, and elegant presentation suitable for a high-end jewelry catalog. The image should be clear, well-lit, and showcase the jewelry as the main subject.`;
 
+      // Generate the image using Gemini 2.0 Flash
       const result = await model.generateContent([enhancedPrompt]);
       const response = await result.response;
-      const text = response.text();
+      
+      // Check if the response contains image data
+      const candidates = response.candidates;
+      let imageUrl = null;
+      let aiResponse = "";
 
-      // Note: Gemini 2.0 Flash doesn't generate images directly
-      // In a real implementation, you would use Gemini Pro Vision or another image generation service
-      // For now, we'll return a response indicating the design generation was processed
+      if (candidates && candidates.length > 0) {
+        const candidate = candidates[0];
+        if (candidate.content && candidate.content.parts) {
+          for (const part of candidate.content.parts) {
+            if (part.inlineData && part.inlineData.data) {
+              // Convert base64 image data to data URL
+              const mimeType = part.inlineData.mimeType || 'image/png';
+              imageUrl = `data:${mimeType};base64,${part.inlineData.data}`;
+            } else if (part.text) {
+              aiResponse += part.text;
+            }
+          }
+        }
+      }
+
+      // If no image was generated, fall back to text response and use base design image
+      if (!imageUrl) {
+        aiResponse = response.text();
+        imageUrl = baseDesign?.imageUrl || "https://images.unsplash.com/photo-1605100804763-247f67b3557e?ixlib=rb-4.0.3&auto=format&fit=crop&w=600&h=600";
+      }
       
       const designIteration = {
         id: Date.now().toString(),
         prompt: prompt,
-        imageUrl: baseDesign?.imageUrl || "https://images.unsplash.com/photo-1605100804763-247f67b3557e?ixlib=rb-4.0.3&auto=format&fit=crop&w=600&h=600",
+        imageUrl: imageUrl,
         timestamp: new Date().toISOString(),
-        aiResponse: text
+        aiResponse: aiResponse
       };
 
       res.json({
         success: true,
         iteration: designIteration,
-        message: "Design iteration generated successfully"
+        message: imageUrl.startsWith('data:') ? "AI-generated design created successfully" : "Design analysis completed successfully"
       });
 
     } catch (error) {
