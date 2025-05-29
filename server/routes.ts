@@ -1,4 +1,3 @@
-
 import express, { type Request, Response } from "express";
 import { createServer } from "http";
 import { MemStorage } from "./storage";
@@ -39,14 +38,14 @@ export function registerRoutes(app: express.Application) {
     try {
       const id = parseInt(req.params.id);
       const baseDesign = await storage.getBaseDesign(id);
-      
+
       if (!baseDesign) {
         return res.status(404).json({
           success: false,
           message: "Base design not found"
         });
       }
-      
+
       res.json(baseDesign);
     } catch (error) {
       res.status(500).json({
@@ -60,13 +59,13 @@ export function registerRoutes(app: express.Application) {
   app.post("/api/generate-design", async (req: Request, res: Response) => {
     try {
       const { prompt, baseDesignId, previousImage } = req.body;
-      
+
       console.log("Generating design with user prompt:", prompt);
       console.log("Previous image URL:", previousImage);
 
       // Check if GEMINI_API_KEY is available
       const apiKey = process.env.GEMINI_API_KEY;
-      
+
       let imageUrl = "";
       let aiResponse = "";
 
@@ -82,25 +81,25 @@ export function registerRoutes(app: express.Application) {
           if (previousImage && !previousImage.startsWith('data:')) {
             try {
               console.log("Downloading previous image for iteration...");
-              
+
               // Convert relative URLs to absolute URLs for local uploads
               let imageUrl = previousImage;
               if (previousImage.startsWith('/uploads/')) {
                 imageUrl = `http://localhost:5000${previousImage}`;
               }
-              
+
               const imageResponse = await fetch(imageUrl);
-              
+
               if (!imageResponse.ok) {
                 throw new Error(`Failed to fetch image: ${imageResponse.status}`);
               }
-              
+
               const imageBuffer = await imageResponse.arrayBuffer();
               const imageBase64 = Buffer.from(imageBuffer).toString('base64');
               const mimeType = imageResponse.headers.get('content-type') || 'image/jpeg';
-              
+
               console.log("Image downloaded, sending to Gemini for iteration");
-              
+
               // Send both image and text prompt for iteration
               contents = [
                 {
@@ -145,11 +144,11 @@ export function registerRoutes(app: express.Application) {
               const imageData = part.inlineData.data;
               const mimeType = part.inlineData.mimeType || "image/png";
               const extension = mimeType.includes('png') ? 'png' : 'jpg';
-              
+
               try {
                 const fs = await import('fs/promises');
                 const path = await import('path');
-                
+
                 // Create uploads directory if it doesn't exist
                 const uploadsDir = path.join(process.cwd(), 'uploads');
                 try {
@@ -157,18 +156,18 @@ export function registerRoutes(app: express.Application) {
                 } catch (e) {
                   // Directory might already exist
                 }
-                
+
                 // Save image with unique filename
                 const filename = `generated-${Date.now()}.${extension}`;
                 const filepath = path.join(uploadsDir, filename);
                 const buffer = Buffer.from(imageData, 'base64');
-                
+
                 await fs.writeFile(filepath, buffer);
-                
+
                 // Return URL to serve the image
                 imageUrl = `/uploads/${filename}`;
                 console.log("Generated image saved successfully:", filename);
-                
+
               } catch (saveError) {
                 console.error("Failed to save image:", saveError);
                 // Fallback to placeholder if save fails
@@ -195,7 +194,7 @@ export function registerRoutes(app: express.Application) {
           "https://images.unsplash.com/photo-1599643478518-a784e5dc4c8f?ixlib=rb-4.0.3&auto=format&fit=crop&w=400&h=400",
           "https://images.unsplash.com/photo-1605100804763-247f67b3557e?ixlib=rb-4.0.3&auto=format&fit=crop&w=400&h=400"
         ];
-        
+
         const promptHash = prompt.split('').reduce((a, b) => {
           a = ((a << 5) - a) + b.charCodeAt(0);
           return a & a;
@@ -236,7 +235,7 @@ export function registerRoutes(app: express.Application) {
   app.post("/api/chat", async (req: Request, res: Response) => {
     try {
       const { message, projectId, context } = req.body;
-      
+
       const response = {
         id: Date.now().toString(),
         content: `I understand you said: "${message}". How can I help you with your jewelry design?`,
@@ -259,7 +258,7 @@ export function registerRoutes(app: express.Application) {
   app.post("/api/export-design/:projectId", async (req: Request, res: Response) => {
     try {
       const { projectId } = req.params;
-      
+
       res.json({
         success: true,
         message: `Design ${projectId} exported successfully`,
@@ -276,7 +275,7 @@ export function registerRoutes(app: express.Application) {
   app.post("/api/projects", async (req: Request, res: Response) => {
     try {
       const projectData = req.body;
-      
+
       const project = {
         id: Date.now(),
         ...projectData,
@@ -299,7 +298,7 @@ export function registerRoutes(app: express.Application) {
     try {
       const projectId = parseInt(req.params.id);
       const updates = req.body;
-      
+
       // In a real implementation, you would update the project in storage
       // For now, just return success
       res.json({
@@ -319,3 +318,6 @@ export function registerRoutes(app: express.Application) {
 
   return server;
 }
+const fullPrompt = `Create a high-quality, photorealistic jewelry design: ${prompt}. 
+        Base style: ${selectedBaseDesign?.name || "Classic"} (${selectedBaseDesign?.category || "rings"}).
+        Requirements: Professional jewelry photography, studio lighting, white background, 512x512 resolution, clean details, precious metals, gemstones, modern finish.`;
