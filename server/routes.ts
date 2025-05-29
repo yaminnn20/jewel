@@ -62,6 +62,7 @@ export function registerRoutes(app: express.Application) {
       const { prompt, baseDesignId, previousImage } = req.body;
       
       console.log("Generating design with user prompt:", prompt);
+      console.log("Previous image URL:", previousImage);
 
       // Check if GEMINI_API_KEY is available
       const apiKey = process.env.GEMINI_API_KEY;
@@ -71,27 +72,77 @@ export function registerRoutes(app: express.Application) {
 
       if (apiKey) {
         try {
-          // Use Gemini API for real image generation - send only user's prompt
+          // Use Gemini API for real image generation
           const { GoogleGenAI, Modality } = await import("@google/genai");
           const ai = new GoogleGenAI({ apiKey });
 
+          let contents: any[] = [];
+
+          // If we have a previous image, download it and include it in the request
+          if (previousImage) {
+            try {
+              console.log("Downloading previous image for iteration...");
+              const imageResponse = await fetch(previousImage);
+              const imageBuffer = await imageResponse.arrayBuffer();
+              const imageBase64 = Buffer.from(imageBuffer).toString('base64');
+              const mimeType = imageResponse.headers.get('content-type') || 'image/jpeg';
+              
+              console.log("Image downloaded, sending to Gemini for iteration");
+              
+              // Send both image and text prompt for iteration
+              contents = [
+                {
+                  role: "user",
+                  parts: [
+                    {
+                      inlineData: {
+                        mimeType: mimeType,
+                        data: imageBase64
+                      }
+                    },
+                    {
+                      text: `Please modify this jewelry design: ${prompt}`
+                    }
+                  ]
+                }
+              ];
+            } catch (downloadError) {
+              console.error("Failed to download image:", downloadError);
+              // Fallback to text-only if image download fails
+              contents = prompt;
+            }
+          } else {
+            // No previous image, just use text prompt
+            contents = prompt;
+          }
+
           const response = await ai.models.generateContent({
             model: "gemini-2.0-flash-preview-image-generation",
-            contents: prompt, // Use exact user prompt
+            contents: contents,
             config: {
               responseModalities: [Modality.TEXT, Modality.IMAGE],
             },
           });
 
-          // Process the response - save as URL instead of base64 to avoid payload size issues
+          // Process the response
           for (const part of response.candidates[0].content.parts) {
             if (part.text) {
               aiResponse = part.text;
             } else if (part.inlineData) {
-              // For now, we'll use a placeholder URL to avoid payload size issues
-              // In production, you'd save the image to cloud storage and return the URL
-              imageUrl = "https://images.unsplash.com/photo-1515562141207-7a88fb7ce338?ixlib=rb-4.0.3&auto=format&fit=crop&w=400&h=400";
-              console.log("Generated image received (using placeholder URL to avoid payload size)");
+              // For development, we'll store as data URL
+              // In production, save to cloud storage and return URL
+              const imageData = part.inlineData.data;
+              const mimeType = part.inlineData.mimeType || "image/png";
+              
+              // Temporarily limit image size to avoid payload issues
+              // In production, upload to cloud storage instead
+              if (imageData.length > 1000000) { // ~750KB base64 limit
+                console.log("Generated image too large, using placeholder");
+                imageUrl = "https://images.unsplash.com/photo-1515562141207-7a88fb7ce338?ixlib=rb-4.0.3&auto=format&fit=crop&w=400&h=400";
+              } else {
+                imageUrl = `data:${mimeType};base64,${imageData}`;
+                console.log("Generated new iteration image");
+              }
             }
           }
 

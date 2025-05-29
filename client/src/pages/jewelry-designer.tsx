@@ -140,10 +140,14 @@ export default function JewelryDesigner() {
       return;
     }
 
+    // Get the current image URL for iteration
+    const currentImageUrl = currentProject?.currentDesignData?.imageUrl || selectedBaseDesign.imageUrl;
+
     setIsGenerating(true);
     generateDesignMutation.mutate({
       prompt,
       baseDesignId: selectedBaseDesign.id,
+      previousImage: currentImageUrl, // Pass current image for iteration
     });
   };
 
