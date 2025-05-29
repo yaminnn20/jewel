@@ -318,6 +318,3 @@ export function registerRoutes(app: express.Application) {
 
   return server;
 }
-const fullPrompt = `Create a high-quality, photorealistic jewelry design: ${prompt}. 
-        Base style: ${selectedBaseDesign?.name || "Classic"} (${selectedBaseDesign?.category || "rings"}).
-        Requirements: Professional jewelry photography, studio lighting, white background, 512x512 resolution, clean details, precious metals, gemstones, modern finish.`;
