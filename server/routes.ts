@@ -119,21 +119,35 @@ export async function registerRoutes(app: Express): Promise<Server> {
 
       console.log("Sending image generation prompt to Gemini:", enhancedPrompt);
 
-      // Generate image using Gemini 2.0 Flash with proper image generation request
+      // Try using a different approach for image generation with Gemini
+      // Check if we need to use a specific image generation model or endpoint
+      console.log("Available models:", await genAI.listModels());
+      
       const result = await model.generateContent({
         contents: [{
-          role: "user",
+          role: "user", 
           parts: [{
             text: enhancedPrompt
           }]
         }],
         generationConfig: {
           temperature: 0.8,
-          topP: 0.9,
-          topK: 40,
-          maxOutputTokens: 8192,
-          responseMimeType: "image/png" // Request image output
-        }
+          candidateCount: 1
+        },
+        // Try different approach for image generation
+        tools: [{
+          functionDeclarations: [{
+            name: "generate_image",
+            description: "Generate a jewelry design image",
+            parameters: {
+              type: "object",
+              properties: {
+                prompt: { type: "string" },
+                style: { type: "string" }
+              }
+            }
+          }]
+        }]
       });
       const response = await result.response;
       
