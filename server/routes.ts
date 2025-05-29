@@ -1,0 +1,98 @@
+
+import express, { type Request, Response } from "express";
+import { createServer } from "http";
+
+export function registerRoutes(app: express.Application) {
+  const server = createServer(app);
+
+  // API routes
+  app.post("/api/generate-design", async (req: Request, res: Response) => {
+    try {
+      // Placeholder for design generation logic
+      const { prompt, baseDesignId, previousImage } = req.body;
+      
+      const iteration = {
+        id: Date.now().toString(),
+        imageUrl: "https://images.unsplash.com/photo-1515562141207-7a88fb7ce338?ixlib=rb-4.0.3&auto=format&fit=crop&w=400&h=400",
+        prompt,
+        timestamp: new Date().toISOString(),
+        aiResponse: "Design generated successfully"
+      };
+
+      res.json({
+        success: true,
+        iteration,
+        message: "Design generated successfully"
+      });
+    } catch (error) {
+      res.status(500).json({
+        success: false,
+        message: "Failed to generate design"
+      });
+    }
+  });
+
+  app.post("/api/chat", async (req: Request, res: Response) => {
+    try {
+      const { message, projectId, context } = req.body;
+      
+      const response = {
+        id: Date.now().toString(),
+        content: `I understand you said: "${message}". How can I help you with your jewelry design?`,
+        isUser: false,
+        timestamp: new Date().toISOString()
+      };
+
+      res.json({
+        success: true,
+        response
+      });
+    } catch (error) {
+      res.status(500).json({
+        success: false,
+        message: "Failed to process chat message"
+      });
+    }
+  });
+
+  app.post("/api/export-design/:projectId", async (req: Request, res: Response) => {
+    try {
+      const { projectId } = req.params;
+      
+      res.json({
+        success: true,
+        message: `Design ${projectId} exported successfully`,
+        downloadUrl: "/api/download/design-export.zip"
+      });
+    } catch (error) {
+      res.status(500).json({
+        success: false,
+        message: "Failed to export design"
+      });
+    }
+  });
+
+  app.post("/api/projects", async (req: Request, res: Response) => {
+    try {
+      const projectData = req.body;
+      
+      const project = {
+        id: Date.now(),
+        ...projectData,
+        createdAt: new Date().toISOString()
+      };
+
+      res.json({
+        success: true,
+        project
+      });
+    } catch (error) {
+      res.status(500).json({
+        success: false,
+        message: "Failed to create project"
+      });
+    }
+  });
+
+  return server;
+}
