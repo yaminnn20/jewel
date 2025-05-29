@@ -95,8 +95,19 @@ export function registerRoutes(app: express.Application) {
               }
 
               const imageBuffer = await imageResponse.arrayBuffer();
-              const imageBase64 = Buffer.from(imageBuffer).toString('base64');
-              const mimeType = imageResponse.headers.get('content-type') || 'image/jpeg';
+              
+              // Resize image to reduce upload time (max 512x512)
+              const sharp = await import('sharp');
+              const resizedImageBuffer = await sharp.default(Buffer.from(imageBuffer))
+                .resize(512, 512, { 
+                  fit: 'inside',
+                  withoutEnlargement: true 
+                })
+                .jpeg({ quality: 80 })
+                .toBuffer();
+              
+              const imageBase64 = resizedImageBuffer.toString('base64');
+              const mimeType = 'image/jpeg';
 
               console.log("Image downloaded, sending to Gemini for iteration");
 
