@@ -27,20 +27,22 @@ export default function JewelryDesigner() {
     queryKey: ["/api/sub-designs"],
   });
 
-  // Create project mutation
+  // Create new project mutation
   const createProjectMutation = useMutation({
     mutationFn: api.createProject,
-    onSuccess: (project) => {
-      setCurrentProject(project);
-      queryClient.invalidateQueries({ queryKey: ["/api/projects"] });
+    onSuccess: (response) => {
+      if (response.success && response.project) {
+        setCurrentProject(response.project);
+      }
       toast({
         title: "Project Created",
-        description: "Your design project has been created successfully.",
+        description: "New design project has been created.",
       });
+      queryClient.invalidateQueries({ queryKey: ["/api/projects"] });
     },
     onError: () => {
       toast({
-        title: "Error",
+        title: "Project Creation Failed",
         description: "Failed to create project. Please try again.",
         variant: "destructive",
       });
@@ -56,7 +58,7 @@ export default function JewelryDesigner() {
           ...(currentProject.designIterations || []),
           response.iteration,
         ];
-        
+
         const updatedProject = {
           ...currentProject,
           designIterations: updatedIterations,
@@ -66,11 +68,11 @@ export default function JewelryDesigner() {
             specifications: {},
           },
         };
-        
+
         setCurrentProject(updatedProject);
         api.updateProject(currentProject.id, updatedProject);
       }
-      
+
       toast({
         title: "Design Generated",
         description: "Your custom design has been generated successfully.",
@@ -107,7 +109,7 @@ export default function JewelryDesigner() {
 
   const handleSelectBaseDesign = async (design: BaseDesign) => {
     setSelectedBaseDesign(design);
-    
+
     // Create new project if none exists
     if (!currentProject) {
       const projectData = {
@@ -123,7 +125,7 @@ export default function JewelryDesigner() {
         selectedSubDesigns: [],
         status: "draft",
       };
-      
+
       createProjectMutation.mutate(projectData);
     }
   };

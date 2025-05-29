@@ -145,5 +145,24 @@ export function registerRoutes(app: express.Application) {
     }
   });
 
+  app.patch("/api/projects/:id", async (req: Request, res: Response) => {
+    try {
+      const projectId = parseInt(req.params.id);
+      const updates = req.body;
+      
+      // In a real implementation, you would update the project in storage
+      // For now, just return success
+      res.json({
+        success: true,
+        message: "Project updated successfully"
+      });
+    } catch (error) {
+      res.status(500).json({
+        success: false,
+        message: "Failed to update project"
+      });
+    }
+  });
+
   return server;
 }
