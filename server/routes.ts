@@ -79,10 +79,15 @@ export function registerRoutes(app: express.Application) {
           let contents: any[] = [];
 
           // If we have a previous image, download it and include it in the request
-          if (previousImage) {
+          if (previousImage && !previousImage.startsWith('data:')) {
             try {
               console.log("Downloading previous image for iteration...");
               const imageResponse = await fetch(previousImage);
+              
+              if (!imageResponse.ok) {
+                throw new Error(`Failed to fetch image: ${imageResponse.status}`);
+              }
+              
               const imageBuffer = await imageResponse.arrayBuffer();
               const imageBase64 = Buffer.from(imageBuffer).toString('base64');
               const mimeType = imageResponse.headers.get('content-type') || 'image/jpeg';
@@ -112,7 +117,7 @@ export function registerRoutes(app: express.Application) {
               contents = prompt;
             }
           } else {
-            // No previous image, just use text prompt
+            // No previous image or it's a data URL, just use text prompt
             contents = prompt;
           }
 
@@ -129,19 +134,38 @@ export function registerRoutes(app: express.Application) {
             if (part.text) {
               aiResponse = part.text;
             } else if (part.inlineData) {
-              // For development, we'll store as data URL
-              // In production, save to cloud storage and return URL
+              // Save image to filesystem and serve via URL
               const imageData = part.inlineData.data;
               const mimeType = part.inlineData.mimeType || "image/png";
+              const extension = mimeType.includes('png') ? 'png' : 'jpg';
               
-              // Temporarily limit image size to avoid payload issues
-              // In production, upload to cloud storage instead
-              if (imageData.length > 1000000) { // ~750KB base64 limit
-                console.log("Generated image too large, using placeholder");
+              try {
+                const fs = await import('fs/promises');
+                const path = await import('path');
+                
+                // Create uploads directory if it doesn't exist
+                const uploadsDir = path.join(process.cwd(), 'uploads');
+                try {
+                  await fs.mkdir(uploadsDir, { recursive: true });
+                } catch (e) {
+                  // Directory might already exist
+                }
+                
+                // Save image with unique filename
+                const filename = `generated-${Date.now()}.${extension}`;
+                const filepath = path.join(uploadsDir, filename);
+                const buffer = Buffer.from(imageData, 'base64');
+                
+                await fs.writeFile(filepath, buffer);
+                
+                // Return URL to serve the image
+                imageUrl = `/uploads/${filename}`;
+                console.log("Generated image saved successfully:", filename);
+                
+              } catch (saveError) {
+                console.error("Failed to save image:", saveError);
+                // Fallback to placeholder if save fails
                 imageUrl = "https://images.unsplash.com/photo-1515562141207-7a88fb7ce338?ixlib=rb-4.0.3&auto=format&fit=crop&w=400&h=400";
-              } else {
-                imageUrl = `data:${mimeType};base64,${imageData}`;
-                console.log("Generated new iteration image");
               }
             }
           }
@@ -282,6 +306,9 @@ export function registerRoutes(app: express.Application) {
       });
     }
   });
+
+  // Serve uploaded images
+  app.use("/uploads", express.static("uploads"));
 
   return server;
 }
