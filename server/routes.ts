@@ -3,9 +3,11 @@ import { createServer, type Server } from "http";
 import { storage } from "./storage";
 import { insertDesignProjectSchema, insertManufacturingOrderSchema } from "@shared/schema";
 import { GoogleGenerativeAI } from "@google/generative-ai";
+import { GoogleGenAI, Modality } from "@google/genai";
 
-// Initialize Gemini AI
+// Initialize Gemini AI for both text and image generation
 const genAI = new GoogleGenerativeAI(process.env.GEMINI_API_KEY || process.env.GOOGLE_AI_API_KEY || "");
+const imageGenAI = new GoogleGenAI({ apiKey: process.env.GEMINI_API_KEY || process.env.GOOGLE_AI_API_KEY || "" });
 
 export async function registerRoutes(app: Express): Promise<Server> {
   
@@ -103,11 +105,6 @@ export async function registerRoutes(app: Express): Promise<Server> {
         baseDesign = await storage.getBaseDesign(baseDesignId);
       }
 
-      // Use Gemini 2.0 Flash for image generation
-      const model = genAI.getGenerativeModel({ 
-        model: "gemini-2.0-flash-exp"
-      });
-
       // Create a comprehensive prompt for image generation
       let enhancedPrompt = `Generate a jewelry design image based on: "${prompt}"`;
       
@@ -119,61 +116,34 @@ export async function registerRoutes(app: Express): Promise<Server> {
 
       console.log("Sending image generation prompt to Gemini:", enhancedPrompt);
 
-      // Try using a different approach for image generation with Gemini
-      // Check if we need to use a specific image generation model or endpoint
-      console.log("Available models:", await genAI.listModels());
-      
-      const result = await model.generateContent({
-        contents: [{
-          role: "user", 
-          parts: [{
-            text: enhancedPrompt
-          }]
-        }],
-        generationConfig: {
-          temperature: 0.8,
-          candidateCount: 1
+      // Use the new Google GenAI SDK for image generation
+      const response = await imageGenAI.models.generateContent({
+        model: "gemini-2.0-flash-preview-image-generation",
+        contents: enhancedPrompt,
+        config: {
+          responseModalities: [Modality.TEXT, Modality.IMAGE],
         },
-        // Try different approach for image generation
-        tools: [{
-          functionDeclarations: [{
-            name: "generate_image",
-            description: "Generate a jewelry design image",
-            parameters: {
-              type: "object",
-              properties: {
-                prompt: { type: "string" },
-                style: { type: "string" }
-              }
-            }
-          }]
-        }]
       });
-      const response = await result.response;
       
-      // Check if the response contains image data
-      const candidates = response.candidates;
+      // Process the response to extract text and image data
       let imageUrl = null;
       let aiResponse = "";
 
-      if (candidates && candidates.length > 0) {
-        const candidate = candidates[0];
-        if (candidate.content && candidate.content.parts) {
-          for (const part of candidate.content.parts) {
-            if (part.inlineData && part.inlineData.data) {
-              // Convert base64 image data to data URL
-              const mimeType = part.inlineData.mimeType || 'image/png';
-              imageUrl = `data:${mimeType};base64,${part.inlineData.data}`;
-            } else if (part.text) {
-              aiResponse += part.text;
-            }
-          }
+      for (const part of response.candidates[0].content.parts) {
+        if (part.text) {
+          aiResponse += part.text;
+        } else if (part.inlineData) {
+          // Convert base64 image data to data URL
+          const imageData = part.inlineData.data;
+          const mimeType = part.inlineData.mimeType || 'image/png';
+          imageUrl = `data:${mimeType};base64,${imageData}`;
+          console.log("Generated image successfully");
         }
       }
 
-      // If no image was generated, fall back to text response and use base design image
+      // If no image was generated, use base design image as fallback
       if (!imageUrl) {
-        aiResponse = response.text();
+        console.log("No image generated, using base design image");
         imageUrl = baseDesign?.imageUrl || "https://images.unsplash.com/photo-1605100804763-247f67b3557e?ixlib=rb-4.0.3&auto=format&fit=crop&w=600&h=600";
       }
       

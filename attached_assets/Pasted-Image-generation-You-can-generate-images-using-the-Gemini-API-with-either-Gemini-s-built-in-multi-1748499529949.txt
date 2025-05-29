@@ -1,0 +1,136 @@
+Image generation
+
+You can generate images using the Gemini API with either Gemini's built-in multimodal capabilities or Imagen, Google's specialized image generation model. For most use cases, start with Gemini. Choose Imagen for specialized tasks where image quality is critical. See Choosing the right model section for more guidance.
+
+All generated images include a SynthID watermark.
+
+Before you begin
+Ensure you use a supported model and version for image generation:
+
+For Gemini, use Gemini 2.0 Flash Preview Image Generation.
+
+For Imagen, use Imagen 3. Note that this model is only available on the Paid tier.
+
+You can access both Gemini and Imagen 3 using the same libraries.
+
+Note: Image generation may not be available in all regions and countries, review our Models page for more information.
+Generate images using Gemini
+Gemini can generate and process images conversationally. You can prompt Gemini with text, images, or a combination of both to achieve various image-related tasks, such as image generation and editing.
+
+You must include responseModalities: ["TEXT", "IMAGE"] in your configuration. Image-only output is not supported with these models.
+
+Image generation (text-to-image)
+The following code demonstrates how to generate an image based on a descriptive prompt:
+
+Python
+JavaScript
+Go
+REST
+Note: We've released the Google SDK for TypeScript and JavaScript in preview launch stage. Use this SDK for image generation features.
+
+import { GoogleGenAI, Modality } from "@google/genai";
+import * as fs from "node:fs";
+
+async function main() {
+
+  const ai = new GoogleGenAI({ apiKey: "GEMINI_API_KEY" });
+
+  const contents =
+    "Hi, can you create a 3d rendered image of a pig " +
+    "with wings and a top hat flying over a happy " +
+    "futuristic scifi city with lots of greenery?";
+
+  // Set responseModalities to include "Image" so the model can generate  an image
+  const response = await ai.models.generateContent({
+    model: "gemini-2.0-flash-preview-image-generation",
+    contents: contents,
+    config: {
+      responseModalities: [Modality.TEXT, Modality.IMAGE],
+    },
+  });
+  for (const part of response.candidates[0].content.parts) {
+    // Based on the part type, either show the text or save the image
+    if (part.text) {
+      console.log(part.text);
+    } else if (part.inlineData) {
+      const imageData = part.inlineData.data;
+      const buffer = Buffer.from(imageData, "base64");
+      fs.writeFileSync("gemini-native-image.png", buffer);
+      console.log("Image saved as gemini-native-image.png");
+    }
+  }
+}
+
+main();
+AI-generated image of a fantastical flying pig
+AI-generated image of a fantastical flying pig
+Image editing (text-and-image-to-image)
+To perform image editing, add an image as input. The following example demonstrates uploading base64 encoded images. For multiple images and larger payloads, check the image input section.
+
+Python
+JavaScript
+Go
+REST
+Note: We've released the Google SDK for TypeScript and JavaScript in preview launch stage. Use this SDK for image generation features.
+
+import { GoogleGenAI, Modality } from "@google/genai";
+import * as fs from "node:fs";
+
+async function main() {
+
+  const ai = new GoogleGenAI({ apiKey: "GEMINI_API_KEY" });
+
+  // Load the image from the local file system
+  const imagePath = "path/to/image.png";
+  const imageData = fs.readFileSync(imagePath);
+  const base64Image = imageData.toString("base64");
+
+  // Prepare the content parts
+  const contents = [
+    { text: "Can you add a llama next to the image?" },
+    {
+      inlineData: {
+        mimeType: "image/png",
+        data: base64Image,
+      },
+    },
+  ];
+
+  // Set responseModalities to include "Image" so the model can generate an image
+  const response = await ai.models.generateContent({
+    model: "gemini-2.0-flash-preview-image-generation",
+    contents: contents,
+    config: {
+      responseModalities: [Modality.TEXT, Modality.IMAGE],
+    },
+  });
+  for (const part of response.candidates[0].content.parts) {
+    // Based on the part type, either show the text or save the image
+    if (part.text) {
+      console.log(part.text);
+    } else if (part.inlineData) {
+      const imageData = part.inlineData.data;
+      const buffer = Buffer.from(imageData, "base64");
+      fs.writeFileSync("gemini-native-image.png", buffer);
+      console.log("Image saved as gemini-native-image.png");
+    }
+  }
+}
+
+main();
+Other image generation modes
+Gemini supports other image interaction modes based on prompt structure and context, including:
+
+Text to image(s) and text (interleaved): Outputs images with related text.
+Example prompt: "Generate an illustrated recipe for a paella."
+Image(s) and text to image(s) and text (interleaved): Uses input images and text to create new related images and text.
+Example prompt: (With an image of a furnished room) "What other color sofas would work in my space? can you update the image?"
+Multi-turn image editing (chat): Keep generating / editing images conversationally.
+Example prompts: [upload an image of a blue car.] , "Turn this car into a convertible.", "Now change the color to yellow."
+Limitations
+For best performance, use the following languages: EN, es-MX, ja-JP, zh-CN, hi-IN.
+Image generation does not support audio or video inputs.
+Image generation may not always trigger:
+The model may output text only. Try asking for image outputs explicitly (e.g. "generate an image", "provide images as you go along", "update the image").
+The model may stop generating partway through. Try again or try a different prompt.
+When generating text for an image, Gemini works best if you first generate the text and then ask for an image with the text.
