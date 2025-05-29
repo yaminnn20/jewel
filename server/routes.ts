@@ -103,19 +103,45 @@ export async function registerRoutes(app: Express): Promise<Server> {
         baseDesign = await storage.getBaseDesign(baseDesignId);
       }
 
-      const model = genAI.getGenerativeModel({ model: "gemini-2.0-flash-exp" });
+      // Try to use Gemini 2.0 Flash Thinking model which supports image generation
+      const model = genAI.getGenerativeModel({ 
+        model: "gemini-2.0-flash-thinking-exp"
+      });
 
-      // Create enhanced prompt for jewelry design image generation
-      let enhancedPrompt = `Generate a high-quality, professional jewelry design image based on: ${prompt}`;
+      // Create a comprehensive prompt for image generation
+      let enhancedPrompt = `I need you to generate a jewelry design image. Here's what I want:
+
+User Request: "${prompt}"`;
       
       if (baseDesign) {
-        enhancedPrompt += ` This should be a variation of a ${baseDesign.category} style piece called "${baseDesign.name}" - ${baseDesign.description}.`;
+        enhancedPrompt += `
+
+Base Design Context:
+- Type: ${baseDesign.category}
+- Name: ${baseDesign.name}
+- Description: ${baseDesign.description}
+- Materials: ${baseDesign.specifications?.materials?.join(', ') || 'Various luxury materials'}
+
+Please create a variation inspired by this base design.`;
       }
 
-      enhancedPrompt += ` Create a luxury jewelry piece with professional studio lighting, clean white background, highly detailed and photorealistic. Focus on craftsmanship, materials, and elegant presentation suitable for a high-end jewelry catalog. The image should be clear, well-lit, and showcase the jewelry as the main subject.`;
+      enhancedPrompt += `
 
-      // Generate the image using Gemini 2.0 Flash
-      const result = await model.generateContent([enhancedPrompt]);
+Image Requirements:
+- Generate an actual image (not text description)
+- Professional jewelry photography style
+- White studio background
+- Perfect lighting and shadows
+- High resolution and detail
+- Photorealistic quality
+- Focus on the jewelry piece
+
+Please output an image file showing the jewelry design.`;
+
+      console.log("Sending prompt to Gemini:", enhancedPrompt);
+
+      // Generate content with the model
+      const result = await model.generateContent(enhancedPrompt);
       const response = await result.response;
       
       // Check if the response contains image data
