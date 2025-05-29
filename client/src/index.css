@@ -1,0 +1,112 @@
+@tailwind base;
+@tailwind components;
+@tailwind utilities;
+
+:root {
+  --background: 248 250 252; /* #F8FAFC */
+  --foreground: 30 41 59; /* #1E293B */
+  --muted: 248 250 252; /* #F8FAFC */
+  --muted-foreground: 100 116 139; /* #64748B */
+  --popover: 255 255 255; /* #FFFFFF */
+  --popover-foreground: 30 41 59; /* #1E293B */
+  --card: 255 255 255; /* #FFFFFF */
+  --card-foreground: 30 41 59; /* #1E293B */
+  --border: 226 232 240; /* #E2E8F0 */
+  --input: 226 232 240; /* #E2E8F0 */
+  --primary: 139 92 246; /* #8B5CF6 */
+  --primary-foreground: 255 255 255; /* #FFFFFF */
+  --secondary: 241 245 249; /* #F1F5F9 */
+  --secondary-foreground: 15 23 42; /* #0F172A */
+  --accent: 241 245 249; /* #F1F5F9 */
+  --accent-foreground: 15 23 42; /* #0F172A */
+  --destructive: 239 68 68; /* #EF4444 */
+  --destructive-foreground: 255 255 255; /* #FFFFFF */
+  --ring: 139 92 246; /* #8B5CF6 */
+  --radius: 0.5rem;
+
+  /* Custom jewelry design variables */
+  --luxury-gold: 212 175 55; /* #D4AF37 */
+  --navy: 26 26 46; /* #1A1A2E */
+  --royal: 22 33 62; /* #16213E */
+  --pearl: 248 249 250; /* #F8F9FA */
+  --amethyst: 139 92 246; /* #8B5CF6 */
+  --emerald: 16 185 129; /* #10B981 */
+  --ruby: 239 68 68; /* #EF4444 */
+}
+
+.dark {
+  --background: 15 23 42; /* #0F172A */
+  --foreground: 248 250 252; /* #F8FAFC */
+  --muted: 30 41 59; /* #1E293B */
+  --muted-foreground: 148 163 184; /* #94A3B8 */
+  --popover: 15 23 42; /* #0F172A */
+  --popover-foreground: 248 250 252; /* #F8FAFC */
+  --card: 15 23 42; /* #0F172A */
+  --card-foreground: 248 250 252; /* #F8FAFC */
+  --border: 30 41 59; /* #1E293B */
+  --input: 30 41 59; /* #1E293B */
+  --primary: 139 92 246; /* #8B5CF6 */
+  --primary-foreground: 255 255 255; /* #FFFFFF */
+  --secondary: 30 41 59; /* #1E293B */
+  --secondary-foreground: 248 250 252; /* #F8FAFC */
+  --accent: 30 41 59; /* #1E293B */
+  --accent-foreground: 248 250 252; /* #F8FAFC */
+  --destructive: 220 38 38; /* #DC2626 */
+  --destructive-foreground: 248 250 252; /* #F8FAFC */
+  --ring: 139 92 246; /* #8B5CF6 */
+}
+
+@layer base {
+  * {
+    @apply border-border;
+  }
+
+  body {
+    @apply bg-background text-foreground;
+  }
+}
+
+@layer components {
+  .gradient-border {
+    background: linear-gradient(45deg, hsl(var(--luxury-gold)), hsl(var(--amethyst)));
+    padding: 2px;
+    border-radius: 12px;
+  }
+  
+  .gradient-border-content {
+    background: hsl(var(--card));
+    border-radius: 10px;
+  }
+
+  .luxury-gradient {
+    background: linear-gradient(135deg, hsl(var(--navy)) 0%, hsl(var(--royal)) 100%);
+  }
+
+  .gold-gradient {
+    background: linear-gradient(135deg, hsl(var(--luxury-gold)) 0%, #F4E199 100%);
+  }
+}
+
+@layer utilities {
+  .animate-fade-in {
+    animation: fadeIn 0.5s ease-in-out;
+  }
+  
+  .animate-slide-up {
+    animation: slideUp 0.3s ease-out;
+  }
+  
+  .animate-pulse-gentle {
+    animation: pulse 2s cubic-bezier(0.4, 0, 0.6, 1) infinite;
+  }
+}
+
+@keyframes fadeIn {
+  from { opacity: 0; }
+  to { opacity: 1; }
+}
+
+@keyframes slideUp {
+  from { transform: translateY(20px); opacity: 0; }
+  to { transform: translateY(0); opacity: 1; }
+}
