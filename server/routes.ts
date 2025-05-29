@@ -1,9 +1,60 @@
 
 import express, { type Request, Response } from "express";
 import { createServer } from "http";
+import { MemStorage } from "./storage";
+
+const storage = new MemStorage();
 
 export function registerRoutes(app: express.Application) {
   const server = createServer(app);
+
+  // Get all base designs
+  app.get("/api/base-designs", async (req: Request, res: Response) => {
+    try {
+      const baseDesigns = await storage.getBaseDesigns();
+      res.json(baseDesigns);
+    } catch (error) {
+      res.status(500).json({
+        success: false,
+        message: "Failed to fetch base designs"
+      });
+    }
+  });
+
+  // Get all sub designs
+  app.get("/api/sub-designs", async (req: Request, res: Response) => {
+    try {
+      const subDesigns = await storage.getSubDesigns();
+      res.json(subDesigns);
+    } catch (error) {
+      res.status(500).json({
+        success: false,
+        message: "Failed to fetch sub designs"
+      });
+    }
+  });
+
+  // Get specific base design
+  app.get("/api/base-designs/:id", async (req: Request, res: Response) => {
+    try {
+      const id = parseInt(req.params.id);
+      const baseDesign = await storage.getBaseDesign(id);
+      
+      if (!baseDesign) {
+        return res.status(404).json({
+          success: false,
+          message: "Base design not found"
+        });
+      }
+      
+      res.json(baseDesign);
+    } catch (error) {
+      res.status(500).json({
+        success: false,
+        message: "Failed to fetch base design"
+      });
+    }
+  });
 
   // API routes
   app.post("/api/generate-design", async (req: Request, res: Response) => {
