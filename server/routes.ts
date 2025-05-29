@@ -196,7 +196,9 @@ export async function registerRoutes(app: Express): Promise<Server> {
         contextPrompt += ` Current design context: ${JSON.stringify(context)}`;
       }
 
-      const chatPrompt = `${contextPrompt}\n\nCustomer message: ${message}\n\nProvide helpful, specific advice about jewelry design, materials, modifications, or styling. Keep responses concise and professional.`;
+      const chatPrompt = `${contextPrompt}\n
+Customer message: ${message}\n
+Provide helpful, specific advice about jewelry design, materials, modifications, or styling. Keep responses concise and professional.`;
 
       const result = await model.generateContent([chatPrompt]);
       const response = await result.response;
@@ -313,4 +315,3 @@ export async function registerRoutes(app: Express): Promise<Server> {
   const httpServer = createServer(app);
   return httpServer;
 }
-```
