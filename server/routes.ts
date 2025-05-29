@@ -95,7 +95,7 @@ export function registerRoutes(app: express.Application) {
               }
 
               const imageBuffer = await imageResponse.arrayBuffer();
-              
+
               // Resize image to reduce upload time (max 512x512)
               let resizedImageBuffer;
               try {
@@ -111,7 +111,7 @@ export function registerRoutes(app: express.Application) {
                 console.log("Sharp processing failed, using original image");
                 resizedImageBuffer = Buffer.from(imageBuffer);
               }
-              
+
               const imageBase64 = resizedImageBuffer.toString('base64');
               const mimeType = 'image/jpeg';
 
