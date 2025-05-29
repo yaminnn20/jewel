@@ -65,58 +65,96 @@ export function registerRoutes(app: express.Application) {
       const baseDesign = await storage.getBaseDesign(baseDesignId);
       
       // Create enhanced prompt for AI generation
-      const enhancedPrompt = `Create a high-quality, photorealistic jewelry design based on: ${prompt}. 
-        Base design: ${baseDesign?.name || 'custom design'} (${baseDesign?.category || 'jewelry'}).
-        Style: Professional jewelry photography, studio lighting, white background, 4K resolution.
-        Focus on: intricate details, precious metals, gemstones, craftsmanship.`;
+      const enhancedPrompt = `Create a high-quality, photorealistic jewelry design: ${prompt}. 
+        Base style: ${baseDesign?.name || 'elegant jewelry'} (${baseDesign?.category || 'luxury jewelry'}).
+        Requirements: Professional jewelry photography, studio lighting, white background, 4K resolution, intricate details, precious metals, gemstones, exceptional craftsmanship, luxury finish.`;
 
-      // Simulate AI generation with varied results
-      const designVariations = [
-        "https://images.unsplash.com/photo-1515562141207-7a88fb7ce338?ixlib=rb-4.0.3&auto=format&fit=crop&w=400&h=400",
-        "https://images.unsplash.com/photo-1602173574767-37ac01994b2a?ixlib=rb-4.0.3&auto=format&fit=crop&w=400&h=400",
-        "https://images.unsplash.com/photo-1506630448388-4e683c67ddb0?ixlib=rb-4.0.3&auto=format&fit=crop&w=400&h=400",
-        "https://images.unsplash.com/photo-1599643478518-a784e5dc4c8f?ixlib=rb-4.0.3&auto=format&fit=crop&w=400&h=400",
-        "https://images.unsplash.com/photo-1605100804763-247f67b3557e?ixlib=rb-4.0.3&auto=format&fit=crop&w=400&h=400"
-      ];
-      
-      // Select a different image based on the prompt hash for variety
-      const promptHash = prompt.split('').reduce((a, b) => {
-        a = ((a << 5) - a) + b.charCodeAt(0);
-        return a & a;
-      }, 0);
-      const selectedImage = designVariations[Math.abs(promptHash) % designVariations.length];
+      console.log("Generating design with prompt:", enhancedPrompt);
 
-      // Generate detailed AI response
-      const aiResponses = [
-        `I've created a stunning ${baseDesign?.category || 'jewelry'} design incorporating ${prompt}. The design features enhanced elegance with modern craftsmanship techniques.`,
-        `Your custom design beautifully combines the classic elements of ${baseDesign?.name || 'the base design'} with the creative vision of "${prompt}". This piece showcases exceptional artistry.`,
-        `I've generated a sophisticated interpretation of your request "${prompt}". The design maintains the timeless appeal while adding contemporary flair.`,
-        `This unique ${baseDesign?.category || 'jewelry'} piece perfectly captures the essence of "${prompt}" with refined details and premium materials.`
-      ];
+      // Check if GEMINI_API_KEY is available
+      const apiKey = process.env.GEMINI_API_KEY;
       
-      const selectedResponse = aiResponses[Math.abs(promptHash) % aiResponses.length];
+      let imageUrl = "";
+      let aiResponse = "";
+
+      if (apiKey) {
+        try {
+          // Use Gemini API for real image generation
+          const { GoogleGenAI, Modality } = await import("@google/genai");
+          const ai = new GoogleGenAI({ apiKey });
+
+          const response = await ai.models.generateContent({
+            model: "gemini-2.0-flash-preview-image-generation",
+            contents: enhancedPrompt,
+            config: {
+              responseModalities: [Modality.TEXT, Modality.IMAGE],
+            },
+          });
+
+          // Process the response
+          for (const part of response.candidates[0].content.parts) {
+            if (part.text) {
+              aiResponse = part.text;
+            } else if (part.inlineData) {
+              // Convert base64 image to data URL
+              const imageData = part.inlineData.data;
+              const mimeType = part.inlineData.mimeType || "image/png";
+              imageUrl = `data:${mimeType};base64,${imageData}`;
+            }
+          }
+
+          console.log("Gemini API generated design successfully");
+
+        } catch (apiError) {
+          console.error("Gemini API error:", apiError);
+          // Fallback to placeholder if API fails
+          imageUrl = "https://images.unsplash.com/photo-1515562141207-7a88fb7ce338?ixlib=rb-4.0.3&auto=format&fit=crop&w=400&h=400";
+          aiResponse = `Generated a ${baseDesign?.category || 'jewelry'} design based on "${prompt}". API temporarily unavailable, showing preview.`;
+        }
+      } else {
+        // Fallback when no API key is configured
+        console.log("No GEMINI_API_KEY found, using placeholder");
+        const designVariations = [
+          "https://images.unsplash.com/photo-1515562141207-7a88fb7ce338?ixlib=rb-4.0.3&auto=format&fit=crop&w=400&h=400",
+          "https://images.unsplash.com/photo-1602173574767-37ac01994b2a?ixlib=rb-4.0.3&auto=format&fit=crop&w=400&h=400",
+          "https://images.unsplash.com/photo-1506630448388-4e683c67ddb0?ixlib=rb-4.0.3&auto=format&fit=crop&w=400&h=400",
+          "https://images.unsplash.com/photo-1599643478518-a784e5dc4c8f?ixlib=rb-4.0.3&auto=format&fit=crop&w=400&h=400",
+          "https://images.unsplash.com/photo-1605100804763-247f67b3557e?ixlib=rb-4.0.3&auto=format&fit=crop&w=400&h=400"
+        ];
+        
+        const promptHash = prompt.split('').reduce((a, b) => {
+          a = ((a << 5) - a) + b.charCodeAt(0);
+          return a & a;
+        }, 0);
+        imageUrl = designVariations[Math.abs(promptHash) % designVariations.length];
+        aiResponse = `Preview design for "${prompt}". Configure GEMINI_API_KEY for AI generation.`;
+      }
+
+      if (!aiResponse) {
+        aiResponse = `I've created a sophisticated ${baseDesign?.category || 'jewelry'} design incorporating "${prompt}". This piece showcases exceptional artistry with premium materials and refined details.`;
+      }
 
       const iteration = {
         id: Date.now().toString(),
-        imageUrl: selectedImage,
+        imageUrl,
         prompt: enhancedPrompt,
         timestamp: new Date().toISOString(),
-        aiResponse: selectedResponse
+        aiResponse
       };
 
-      // Add a small delay to simulate AI processing
-      await new Promise(resolve => setTimeout(resolve, 1500));
+      // Add processing delay
+      await new Promise(resolve => setTimeout(resolve, 2000));
 
       res.json({
         success: true,
         iteration,
-        message: "AI design generated successfully"
+        message: apiKey ? "AI design generated successfully" : "Preview generated - add GEMINI_API_KEY for AI generation"
       });
     } catch (error) {
       console.error("Design generation error:", error);
       res.status(500).json({
         success: false,
-        message: "Failed to generate design with AI"
+        message: "Failed to generate design"
       });
     }
   });
