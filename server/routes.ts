@@ -1,5 +1,4 @@
 import express, { type Request, Response } from "express";
-import { createServer } from "http";
 import { MemStorage } from "./storage";
 import multer, { FileFilterCallback } from 'multer';
 import path from 'path';
@@ -39,7 +38,6 @@ const upload = multer({
 });
 
 export function registerRoutes(app: express.Application) {
-  const server = createServer(app);
 
   // Get all base designs
   app.get("/api/base-designs", async (req: Request, res: Response) => {
@@ -492,6 +490,4 @@ export function registerRoutes(app: express.Application) {
 
   // Serve uploaded images
   app.use("/uploads", express.static("uploads"));
-
-  return server;
 }
