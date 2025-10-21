@@ -1,6 +1,6 @@
 import express, { type Request, Response } from "express";
-import { registerRoutes } from "../server/routes";
-import { serveStatic } from "../server/vite";
+import { registerRoutes } from "./routes";
+import { serveStatic } from "./vite";
 
 const app = express();
 
