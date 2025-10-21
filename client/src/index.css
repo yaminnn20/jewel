@@ -2,111 +2,254 @@
 @tailwind components;
 @tailwind utilities;
 
-:root {
-  --background: 255 255 255; /* #FFFFFF */
-  --foreground: 30 41 59; /* #1E293B */
-  --muted: 248 250 252; /* #F8FAFC */
-  --muted-foreground: 100 116 139; /* #64748B */
-  --popover: 255 255 255; /* #FFFFFF */
-  --popover-foreground: 30 41 59; /* #1E293B */
-  --card: 255 255 255; /* #FFFFFF */
-  --card-foreground: 30 41 59; /* #1E293B */
-  --border: 226 232 240; /* #E2E8F0 */
-  --input: 226 232 240; /* #E2E8F0 */
-  --primary: 139 92 246; /* #8B5CF6 */
-  --primary-foreground: 255 255 255; /* #FFFFFF */
-  --secondary: 241 245 249; /* #F1F5F9 */
-  --secondary-foreground: 15 23 42; /* #0F172A */
-  --accent: 241 245 249; /* #F1F5F9 */
-  --accent-foreground: 15 23 42; /* #0F172A */
-  --destructive: 239 68 68; /* #EF4444 */
-  --destructive-foreground: 255 255 255; /* #FFFFFF */
-  --ring: 139 92 246; /* #8B5CF6 */
-  --radius: 0.5rem;
+@layer base {
+  :root {
+    --background: 0 0% 100%;
+    --foreground: 240 10% 3.9%;
+    --card: 0 0% 100%;
+    --card-foreground: 240 10% 3.9%;
+    --popover: 0 0% 100%;
+    --popover-foreground: 240 10% 3.9%;
+    --primary: 240 5.9% 10%;
+    --primary-foreground: 0 0% 98%;
+    --secondary: 240 4.8% 95.9%;
+    --secondary-foreground: 240 5.9% 10%;
+    --muted: 240 4.8% 95.9%;
+    --muted-foreground: 240 3.8% 46.1%;
+    --accent: 240 4.8% 95.9%;
+    --accent-foreground: 240 5.9% 10%;
+    --destructive: 0 84.2% 60.2%;
+    --destructive-foreground: 0 0% 98%;
+    --border: 240 5.9% 90%;
+    --input: 240 5.9% 90%;
+    --ring: 240 5.9% 10%;
+    --radius: 0.75rem;
+  }
 
-  /* Custom jewelry design variables */
-  --luxury-gold: 212 175 55; /* #D4AF37 */
-  --navy: 26 26 46; /* #1A1A2E */
-  --royal: 22 33 62; /* #16213E */
-  --pearl: 248 249 250; /* #F8F9FA */
-  --amethyst: 139 92 246; /* #8B5CF6 */
-  --emerald: 16 185 129; /* #10B981 */
-  --ruby: 239 68 68; /* #EF4444 */
-}
-
-.dark {
-  --background: 15 23 42; /* #0F172A */
-  --foreground: 248 250 252; /* #F8FAFC */
-  --muted: 30 41 59; /* #1E293B */
-  --muted-foreground: 148 163 184; /* #94A3B8 */
-  --popover: 15 23 42; /* #0F172A */
-  --popover-foreground: 248 250 252; /* #F8FAFC */
-  --card: 15 23 42; /* #0F172A */
-  --card-foreground: 248 250 252; /* #F8FAFC */
-  --border: 30 41 59; /* #1E293B */
-  --input: 30 41 59; /* #1E293B */
-  --primary: 139 92 246; /* #8B5CF6 */
-  --primary-foreground: 255 255 255; /* #FFFFFF */
-  --secondary: 30 41 59; /* #1E293B */
-  --secondary-foreground: 248 250 252; /* #F8FAFC */
-  --accent: 30 41 59; /* #1E293B */
-  --accent-foreground: 248 250 252; /* #F8FAFC */
-  --destructive: 220 38 38; /* #DC2626 */
-  --destructive-foreground: 248 250 252; /* #F8FAFC */
-  --ring: 139 92 246; /* #8B5CF6 */
+  .dark {
+    --background: 240 10% 3.9%;
+    --foreground: 0 0% 98%;
+    --card: 240 10% 3.9%;
+    --card-foreground: 0 0% 98%;
+    --popover: 240 10% 3.9%;
+    --popover-foreground: 0 0% 98%;
+    --primary: 0 0% 98%;
+    --primary-foreground: 240 5.9% 10%;
+    --secondary: 240 3.7% 15.9%;
+    --secondary-foreground: 0 0% 98%;
+    --muted: 240 3.7% 15.9%;
+    --muted-foreground: 240 5% 64.9%;
+    --accent: 240 3.7% 15.9%;
+    --accent-foreground: 0 0% 98%;
+    --destructive: 0 62.8% 30.6%;
+    --destructive-foreground: 0 0% 98%;
+    --border: 240 3.7% 15.9%;
+    --input: 240 3.7% 15.9%;
+    --ring: 240 4.9% 83.9%;
+  }
 }
 
 @layer base {
   * {
     @apply border-border;
   }
-
   body {
     @apply bg-background text-foreground;
+    font-feature-settings: "rlig" 1, "calt" 1;
   }
 }
 
-@layer components {
-  .gradient-border {
-    background: linear-gradient(45deg, hsl(var(--luxury-gold)), hsl(var(--amethyst)));
-    padding: 2px;
-    border-radius: 12px;
-  }
-  
-  .gradient-border-content {
-    background: hsl(var(--card));
-    border-radius: 10px;
-  }
-
-  .luxury-gradient {
-    background: linear-gradient(135deg, hsl(var(--navy)) 0%, hsl(var(--royal)) 100%);
-  }
-
-  .gold-gradient {
-    background: linear-gradient(135deg, hsl(var(--luxury-gold)) 0%, #F4E199 100%);
-  }
+/* Custom scrollbar styles */
+::-webkit-scrollbar {
+  width: 8px;
+  height: 8px;
 }
 
-@layer utilities {
-  .animate-fade-in {
-    animation: fadeIn 0.5s ease-in-out;
-  }
-  
-  .animate-slide-up {
-    animation: slideUp 0.3s ease-out;
-  }
-  
-  .animate-pulse-gentle {
-    animation: pulse 2s cubic-bezier(0.4, 0, 0.6, 1) infinite;
-  }
+::-webkit-scrollbar-track {
+  background: #f1f1f1;
+  border-radius: 4px;
 }
 
+::-webkit-scrollbar-thumb {
+  background: #a78bfa;
+  border-radius: 4px;
+}
+
+::-webkit-scrollbar-thumb:hover {
+  background: #7c3aed;
+}
+
+/* Smooth transitions */
+.transition-all {
+  transition-property: all;
+  transition-timing-function: cubic-bezier(0.4, 0, 0.2, 1);
+  transition-duration: 300ms;
+}
+
+/* Custom animations */
 @keyframes fadeIn {
-  from { opacity: 0; }
-  to { opacity: 1; }
+  from {
+    opacity: 0;
+  }
+  to {
+    opacity: 1;
+  }
 }
 
-@keyframes slideUp {
-  from { transform: translateY(20px); opacity: 0; }
-  to { transform: translateY(0); opacity: 1; }
+@keyframes slideIn {
+  from {
+    transform: translateX(-100%);
+  }
+  to {
+    transform: translateX(0);
+  }
 }
+
+.animate-fade-in {
+  animation: fadeIn 0.3s ease-in-out;
+}
+
+.animate-slide-in {
+  animation: slideIn 0.3s ease-in-out;
+}
+
+/* Custom utility classes */
+.glass-effect {
+  background: rgba(255, 255, 255, 0.7);
+  backdrop-filter: blur(10px);
+  -webkit-backdrop-filter: blur(10px);
+}
+
+.hover-scale {
+  transition: transform 0.2s ease-in-out;
+}
+
+.hover-scale:hover {
+  transform: scale(1.05);
+}
+
+/* Custom focus styles */
+.focus-ring {
+  @apply focus:outline-none focus:ring-2 focus:ring-[#a78bfa] focus:ring-offset-2;
+}
+
+/* Custom button styles */
+.btn-primary {
+  @apply bg-[#a78bfa] text-white font-bold shadow-md hover:bg-[#7c3aed] transition-colors;
+}
+
+.btn-secondary {
+  @apply bg-white text-[#2d224c] font-bold shadow-md hover:bg-[#f3e9e0] transition-colors border border-[#e5e7eb];
+}
+
+/* Custom card styles */
+.card {
+  @apply bg-[#faf9f7] rounded-2xl shadow p-6 border border-[#f3e9e0];
+}
+
+/* Custom input styles */
+.input {
+  @apply bg-white border border-[#e5e7eb] rounded-lg px-4 py-2 focus:outline-none focus:ring-2 focus:ring-[#a78bfa] focus:border-transparent;
+}
+
+/* Custom select styles */
+.select {
+  @apply bg-white border border-[#e5e7eb] rounded-lg px-4 py-2 focus:outline-none focus:ring-2 focus:ring-[#a78bfa] focus:border-transparent;
+}
+
+/* Custom text styles */
+.heading-1 {
+  @apply text-2xl font-extrabold text-[#2d224c] tracking-tight;
+}
+
+.heading-2 {
+  @apply text-xl font-bold text-[#2d224c] tracking-tight;
+}
+
+.body-text {
+  @apply text-sm text-[#7c6f98] font-medium;
+}
+
+/* Sparkle animation for loading overlay */
+@keyframes sparkle {
+  0% {
+    transform: scale(0) rotate(0deg);
+    opacity: 0;
+  }
+  50% {
+    transform: scale(1) rotate(180deg);
+    opacity: 1;
+  }
+  100% {
+    transform: scale(0) rotate(360deg);
+    opacity: 0;
+  }
+}
+
+@keyframes float {
+  0% {
+    transform: translateY(0px);
+  }
+  50% {
+    transform: translateY(-10px);
+  }
+  100% {
+    transform: translateY(0px);
+  }
+}
+
+.loading-overlay {
+  @apply fixed inset-0 bg-white/80 backdrop-blur-sm z-50 flex items-center justify-center;
+}
+
+.sparkle-container {
+  @apply relative w-32 h-32;
+}
+
+.sparkle {
+  @apply absolute w-4 h-4 bg-[#a78bfa] rounded-full;
+  animation: sparkle 1.5s infinite;
+}
+
+.sparkle:nth-child(1) {
+  top: 0;
+  left: 50%;
+  transform: translateX(-50%);
+  animation-delay: 0s;
+}
+
+.sparkle:nth-child(2) {
+  top: 25%;
+  right: 0;
+  animation-delay: 0.2s;
+}
+
+.sparkle:nth-child(3) {
+  bottom: 25%;
+  right: 0;
+  animation-delay: 0.4s;
+}
+
+.sparkle:nth-child(4) {
+  bottom: 0;
+  left: 50%;
+  transform: translateX(-50%);
+  animation-delay: 0.6s;
+}
+
+.sparkle:nth-child(5) {
+  bottom: 25%;
+  left: 0;
+  animation-delay: 0.8s;
+}
+
+.sparkle:nth-child(6) {
+  top: 25%;
+  left: 0;
+  animation-delay: 1s;
+}
+
+.loading-text {
+  @apply mt-4 text-[#2d224c] font-medium;
+  animation: float 2s ease-in-out infinite;
+} 

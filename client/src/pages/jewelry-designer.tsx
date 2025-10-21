@@ -14,6 +14,7 @@ export default function JewelryDesigner() {
   const [selectedSubDesigns, setSelectedSubDesigns] = useState<number[]>([]);
   const [currentProject, setCurrentProject] = useState<DesignProject | null>(null);
   const [isGenerating, setIsGenerating] = useState(false);
+  const [isSidebarOpen, setIsSidebarOpen] = useState(true);
   const { toast } = useToast();
   const queryClient = useQueryClient();
 
@@ -109,6 +110,7 @@ export default function JewelryDesigner() {
 
   const handleSelectBaseDesign = async (design: BaseDesign) => {
     setSelectedBaseDesign(design);
+    setIsSidebarOpen(false); // Close sidebar when design is selected
 
     // Create new project if none exists
     if (!currentProject) {
@@ -173,85 +175,87 @@ export default function JewelryDesigner() {
   };
 
   return (
-    <div className="min-h-screen bg-background">
+    <div className="min-h-screen bg-white font-sans">
       {/* Header */}
-      <header className="bg-card shadow-sm border-b border-border sticky top-0 z-50">
+      <header className="bg-white border-b border-[#e5e7eb] shadow-sm sticky top-0 z-50">
         <div className="max-w-7xl mx-auto px-6 py-4">
           <div className="flex items-center justify-between">
             <div className="flex items-center space-x-3">
-              <div className="w-10 h-10 bg-gradient-to-br from-[hsl(var(--luxury-gold))] to-[hsl(var(--amethyst))] rounded-lg flex items-center justify-center">
-                <i className="fas fa-gem text-white text-lg"></i>
+              <div className="w-12 h-12 bg-[#f3e9e0] rounded-xl flex items-center justify-center shadow-md">
+                <i className="fas fa-gem text-[#a78bfa] text-2xl"></i>
               </div>
               <div>
-                <h1 className="text-xl font-semibold text-[hsl(var(--navy))]">AI Jewelry Designer</h1>
-                <p className="text-sm text-muted-foreground">Professional Design Studio</p>
+                <h1 className="text-2xl font-extrabold text-[#2d224c] tracking-tight">AI Jewelry Designer</h1>
+                <p className="text-sm text-[#7c6f98] font-medium">Professional Design Studio</p>
               </div>
             </div>
             <div className="flex items-center space-x-4">
-              <Button variant="ghost" size="sm">
+              <Button 
+                variant="ghost" 
+                size="sm" 
+                className="hover:bg-[#f3e9e0] transition fixed md:relative left-4 top-20 md:top-0 z-50 bg-white shadow-md rounded-full p-2"
+                onClick={() => setIsSidebarOpen(!isSidebarOpen)}
+              >
+                <i className={`fas ${isSidebarOpen ? 'fa-chevron-left' : 'fa-chevron-right'} text-[#2d224c]`}></i>
+              </Button>
+              <Button variant="ghost" size="sm" className="hover:bg-[#f3e9e0] transition">
                 <i className="fas fa-history mr-2"></i>
                 History
               </Button>
-              <Button variant="ghost" size="sm">
+              <Button variant="ghost" size="sm" className="hover:bg-[#f3e9e0] transition">
                 <i className="fas fa-cog mr-2"></i>
                 Settings
               </Button>
               <Button 
                 onClick={handleExportDesign}
-                disabled={!currentProject || exportDesignMutation.isPending}
-                className="bg-[hsl(var(--luxury-gold))] hover:bg-[hsl(var(--luxury-gold))]/90 text-white"
+                className="bg-[#a78bfa] text-white font-bold shadow-md hover:bg-[#7c3aed] transition-colors"
               >
-                <i className="fas fa-download mr-2"></i>
-                Export Design
+                <i className="fas fa-paper-plane mr-2"></i>
+                Export
               </Button>
             </div>
           </div>
         </div>
       </header>
-
       {/* Main Content */}
-      <div className="max-w-7xl mx-auto px-6 py-8">
-        <div className="grid grid-cols-1 lg:grid-cols-3 gap-8">
-          {/* Base Design Gallery */}
-          <div className="lg:col-span-1">
-            <BaseDesignGallery
-              baseDesigns={baseDesigns}
-              subDesigns={subDesigns}
-              selectedBaseDesign={selectedBaseDesign}
-              selectedSubDesigns={selectedSubDesigns}
-              onSelectBaseDesign={handleSelectBaseDesign}
-              onToggleSubDesign={handleSubDesignToggle}
-              isLoading={loadingBaseDesigns || loadingSubDesigns}
-            />
-          </div>
-
-          {/* Design Workspace */}
-          <div className="lg:col-span-1">
-            <DesignWorkspace
-              currentProject={currentProject}
-              selectedBaseDesign={selectedBaseDesign}
-              onGenerateDesign={handleGenerateDesign}
-              onExportDesign={handleExportDesign}
-              isGenerating={isGenerating}
-            />
-          </div>
-
-          {/* Chat Interface */}
-          <div className="lg:col-span-1">
-            <ChatInterface
-              currentProject={currentProject}
-              onGenerateDesign={handleGenerateDesign}
-              isGenerating={isGenerating}
-            />
-          </div>
-        </div>
-      </div>
-
+      <main className="max-w-7xl mx-auto px-4 py-8 grid grid-cols-1 md:grid-cols-3 gap-8 relative">
+        {/* Left: Gallery */}
+        <section className={`fixed md:relative inset-y-0 left-0 w-full md:w-auto bg-[#faf9f7] rounded-2xl shadow p-6 border border-[#f3e9e0] transition-all duration-300 transform ${
+          isSidebarOpen ? 'translate-x-0' : '-translate-x-full md:hidden'
+        }`}>
+          <BaseDesignGallery 
+            baseDesigns={baseDesigns} 
+            subDesigns={subDesigns}
+            selectedBaseDesign={selectedBaseDesign}
+            selectedSubDesigns={selectedSubDesigns}
+            onSelectBaseDesign={handleSelectBaseDesign}
+            onToggleSubDesign={handleSubDesignToggle}
+            isLoading={loadingBaseDesigns || loadingSubDesigns}
+          />
+        </section>
+        {/* Center: Workspace */}
+        <section className={`bg-[#faf9f7] rounded-2xl shadow p-6 border border-[#f3e9e0] transition-all duration-300 ${
+          isSidebarOpen ? 'md:col-span-1' : 'md:col-span-2'
+        }`}>
+          <DesignWorkspace 
+            currentProject={currentProject}
+            selectedBaseDesign={selectedBaseDesign}
+            onGenerateDesign={handleGenerateDesign}
+            onExportDesign={handleExportDesign}
+            isGenerating={isGenerating}
+          />
+        </section>
+        {/* Right: Chat */}
+        <section className="bg-[#faf9f7] rounded-2xl shadow p-6 border border-[#f3e9e0] flex flex-col">
+          <ChatInterface 
+            currentProject={currentProject}
+            onGenerateDesign={handleGenerateDesign}
+            isGenerating={isGenerating}
+          />
+        </section>
+      </main>
       {/* Loading Overlay */}
-      <LoadingOverlay 
-        isVisible={isGenerating || createProjectMutation.isPending} 
-        message="Generating your custom design..."
-      />
+      <LoadingOverlay isVisible={isGenerating || loadingBaseDesigns || loadingSubDesigns} />
     </div>
   );
 }

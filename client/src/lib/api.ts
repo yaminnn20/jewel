@@ -5,6 +5,7 @@ export interface ChatMessage {
   content: string;
   isUser: boolean;
   timestamp: string;
+  imageUrl?: string;
 }
 
 export interface DesignIteration {

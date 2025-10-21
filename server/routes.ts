@@ -1,8 +1,42 @@
 import express, { type Request, Response } from "express";
 import { createServer } from "http";
 import { MemStorage } from "./storage";
+import multer, { FileFilterCallback } from 'multer';
+import path from 'path';
+import fs from 'fs/promises';
 
 const storage = new MemStorage();
+
+// Configure multer for file uploads
+const storageMulter = multer.diskStorage({
+  destination: async (req: Express.Request, file: Express.Multer.File, cb: (error: Error | null, destination: string) => void) => {
+    const uploadsDir = path.join(process.cwd(), 'uploads');
+    try {
+      await fs.mkdir(uploadsDir, { recursive: true });
+      cb(null, uploadsDir);
+    } catch (error) {
+      cb(error as Error, uploadsDir);
+    }
+  },
+  filename: (req: Express.Request, file: Express.Multer.File, cb: (error: Error | null, filename: string) => void) => {
+    const uniqueSuffix = Date.now() + '-' + Math.round(Math.random() * 1E9);
+    cb(null, 'upload-' + uniqueSuffix + path.extname(file.originalname));
+  }
+});
+
+const upload = multer({
+  storage: storageMulter,
+  limits: {
+    fileSize: 10 * 1024 * 1024, // 10MB limit
+  },
+  fileFilter: (req: Express.Request, file: Express.Multer.File, cb: FileFilterCallback) => {
+    if (file.mimetype.startsWith('image/')) {
+      cb(null, true);
+    } else {
+      cb(new Error('Only image files are allowed'));
+    }
+  }
+});
 
 export function registerRoutes(app: express.Application) {
   const server = createServer(app);
@@ -97,25 +131,8 @@ export function registerRoutes(app: express.Application) {
               const imageBuffer = await imageResponse.arrayBuffer();
               const originalBuffer = Buffer.from(imageBuffer);
 
-              // Resize image to reduce upload time (max 256x256)
-              let resizedImageBuffer = originalBuffer;
-              try {
-                const sharp = require('sharp');
-                console.log("Resizing image for faster processing...");
-                resizedImageBuffer = await sharp(originalBuffer)
-                  .resize(256, 256, { 
-                    fit: 'inside',
-                    withoutEnlargement: true 
-                  })
-                  .jpeg({ quality: 60 })
-                  .toBuffer();
-                console.log("Image resized successfully");
-              } catch (sharpError) {
-                console.error("Sharp processing failed:", sharpError.message);
-                console.log("Using original image buffer");
-              }
-
-              const imageBase64 = resizedImageBuffer.toString('base64');
+              // Use original image without any processing
+              const imageBase64 = originalBuffer.toString('base64');
               const mimeType = 'image/jpeg';
 
               console.log("Image downloaded, sending to Gemini for iteration");
@@ -137,8 +154,13 @@ export function registerRoutes(app: express.Application) {
                   ]
                 }
               ];
-            } catch (downloadError) {
-              console.error("Failed to download image:", downloadError);
+            } catch (downloadError: unknown) {
+              if (downloadError instanceof Error) {
+                console.error("Failed to download image:", downloadError.message);
+                console.error("Error stack:", downloadError.stack);
+              } else {
+                console.error("Failed to download image with unknown error");
+              }
               // Fallback to text-only if image download fails
               contents = prompt;
             }
@@ -151,21 +173,19 @@ export function registerRoutes(app: express.Application) {
             model: "gemini-2.0-flash-preview-image-generation",
             contents: contents,
             config: {
-              responseModalities: [Modality.TEXT, Modality.IMAGE],
-              generationConfig: {
-                outputImageDimensions: {
-                  width: 256,
-                  height: 256
-                }
-              }
+              responseModalities: [Modality.TEXT, Modality.IMAGE]
             },
           });
 
           // Process the response
+          if (!response.candidates || !response.candidates[0]?.content?.parts) {
+            throw new Error("Invalid response from Gemini API");
+          }
+
           for (const part of response.candidates[0].content.parts) {
             if (part.text) {
               aiResponse = part.text;
-            } else if (part.inlineData) {
+            } else if (part.inlineData?.data) {
               // Save image to filesystem and serve via URL
               const imageData = part.inlineData.data;
               const mimeType = part.inlineData.mimeType || "image/png";
@@ -188,14 +208,20 @@ export function registerRoutes(app: express.Application) {
                 const filepath = path.join(uploadsDir, filename);
                 const buffer = Buffer.from(imageData, 'base64');
 
+                // Save the original Gemini output without any processing
                 await fs.writeFile(filepath, buffer);
+                console.log("Generated image saved successfully:", filename);
 
                 // Return URL to serve the image
                 imageUrl = `/uploads/${filename}`;
-                console.log("Generated image saved successfully:", filename);
 
-              } catch (saveError) {
-                console.error("Failed to save image:", saveError);
+              } catch (saveError: unknown) {
+                if (saveError instanceof Error) {
+                  console.error("Failed to save image:", saveError.message);
+                  console.error("Error stack:", saveError.stack);
+                } else {
+                  console.error("Failed to save image with unknown error");
+                }
                 // Fallback to placeholder if save fails
                 imageUrl = "https://images.unsplash.com/photo-1515562141207-7a88fb7ce338?ixlib=rb-4.0.3&auto=format&fit=crop&w=400&h=400";
               }
@@ -221,7 +247,7 @@ export function registerRoutes(app: express.Application) {
           "https://images.unsplash.com/photo-1605100804763-247f67b3557e?ixlib=rb-4.0.3&auto=format&fit=crop&w=400&h=400"
         ];
 
-        const promptHash = prompt.split('').reduce((a, b) => {
+        const promptHash = prompt.split('').reduce((a: number, b: string) => {
           a = ((a << 5) - a) + b.charCodeAt(0);
           return a & a;
         }, 0);
@@ -262,9 +288,108 @@ export function registerRoutes(app: express.Application) {
     try {
       const { message, projectId, context } = req.body;
 
+      // Check if GEMINI_API_KEY is available
+      const apiKey = process.env.GEMINI_API_KEY;
+
+      let aiResponse = "";
+
+      if (apiKey) {
+        try {
+          // Use Gemini API for chat
+          const { GoogleGenAI, Modality } = await import("@google/genai");
+          const ai = new GoogleGenAI({ apiKey });
+
+          // Prepare the prompt with context
+          let prompt = message;
+          if (context?.baseDesign) {
+            prompt = `Regarding the jewelry design (ID: ${context.baseDesign}), ${message}`;
+          }
+
+          // Check if we need image generation
+          const needsImageGeneration = prompt.toLowerCase().includes("generate") || 
+                                    prompt.toLowerCase().includes("create") || 
+                                    prompt.toLowerCase().includes("make") ||
+                                    prompt.toLowerCase().includes("show me") ||
+                                    prompt.toLowerCase().includes("design");
+
+          if (needsImageGeneration) {
+            // Use image generation model
+            const response = await ai.models.generateContent({
+              model: "gemini-2.0-flash-preview-image-generation",
+              contents: prompt,
+              config: {
+                responseModalities: [Modality.TEXT, Modality.IMAGE]
+              }
+            });
+
+            // Process the response
+            if (!response.candidates || !response.candidates[0]?.content?.parts) {
+              throw new Error("Invalid response from Gemini API");
+            }
+
+            for (const part of response.candidates[0].content.parts) {
+              if (part.text) {
+                aiResponse = part.text;
+              } else if (part.inlineData?.data) {
+                // Save image to filesystem and serve via URL
+                const imageData = part.inlineData.data;
+                const mimeType = part.inlineData.mimeType || "image/png";
+                const extension = mimeType.includes('png') ? 'png' : 'jpg';
+
+                try {
+                  const fs = await import('fs/promises');
+                  const path = await import('path');
+
+                  // Create uploads directory if it doesn't exist
+                  const uploadsDir = path.join(process.cwd(), 'uploads');
+                  try {
+                    await fs.mkdir(uploadsDir, { recursive: true });
+                  } catch (e) {
+                    // Directory might already exist
+                  }
+
+                  // Save image with unique filename
+                  const filename = `chat-${Date.now()}.${extension}`;
+                  const filepath = path.join(uploadsDir, filename);
+                  const buffer = Buffer.from(imageData, 'base64');
+
+                  await fs.writeFile(filepath, buffer);
+                  console.log("Generated image saved successfully:", filename);
+
+                  // Add image URL to response
+                  aiResponse += `\n[Generated image: /uploads/${filename}]`;
+                } catch (saveError) {
+                  console.error("Failed to save image:", saveError);
+                }
+              }
+            }
+          } else {
+            // Use text-only model for regular chat
+            const response = await ai.models.generateContent({
+              model: "gemini-pro",
+              contents: prompt
+            });
+            
+            if (response.candidates && response.candidates[0]?.content?.parts) {
+              for (const part of response.candidates[0].content.parts) {
+                if (part.text) {
+                  aiResponse = part.text;
+                  break;
+                }
+              }
+            }
+          }
+        } catch (apiError) {
+          console.error("Gemini API error:", apiError);
+          aiResponse = "I apologize, but I'm having trouble connecting to my AI capabilities right now. Please try again in a moment.";
+        }
+      } else {
+        aiResponse = "I understand you're asking about jewelry design. To provide better assistance, please configure the GEMINI_API_KEY.";
+      }
+
       const response = {
         id: Date.now().toString(),
-        content: `I understand you said: "${message}". How can I help you with your jewelry design?`,
+        content: aiResponse,
         isUser: false,
         timestamp: new Date().toISOString()
       };
@@ -274,6 +399,7 @@ export function registerRoutes(app: express.Application) {
         response
       });
     } catch (error) {
+      console.error("Chat error:", error);
       res.status(500).json({
         success: false,
         message: "Failed to process chat message"
@@ -335,6 +461,31 @@ export function registerRoutes(app: express.Application) {
       res.status(500).json({
         success: false,
         message: "Failed to update project"
+      });
+    }
+  });
+
+  // File upload endpoint
+  app.post("/api/upload", upload.single('image'), async (req: Request, res: Response) => {
+    try {
+      if (!req.file) {
+        return res.status(400).json({
+          success: false,
+          message: "No file uploaded"
+        });
+      }
+
+      // Return the URL of the uploaded file
+      const imageUrl = `/uploads/${req.file.filename}`;
+      res.json({
+        success: true,
+        imageUrl
+      });
+    } catch (error) {
+      console.error("File upload error:", error);
+      res.status(500).json({
+        success: false,
+        message: "Failed to upload file"
       });
     }
   });

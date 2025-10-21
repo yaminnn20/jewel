@@ -22,8 +22,11 @@ export default function ChatInterface({
 }: ChatInterfaceProps) {
   const [chatInput, setChatInput] = useState("");
   const [localMessages, setLocalMessages] = useState<ChatMessage[]>([]);
+  const [uploadedImage, setUploadedImage] = useState<{ url: string; file: File } | null>(null);
   const messagesEndRef = useRef<HTMLDivElement>(null);
   const { toast } = useToast();
+  const [isDragging, setIsDragging] = useState(false);
+  const fileInputRef = useRef<HTMLInputElement>(null);
 
   // Initialize with welcome message
   useEffect(() => {
@@ -67,14 +70,72 @@ export default function ChatInterface({
     },
   });
 
+  const handleFileUpload = async (file: File) => {
+    if (!file.type.startsWith('image/')) {
+      toast({
+        title: "Invalid file type",
+        description: "Please upload an image file (PNG, JPG)",
+        variant: "destructive",
+      });
+      return;
+    }
+
+    if (file.size > 10 * 1024 * 1024) { // 10MB limit
+      toast({
+        title: "File too large",
+        description: "Please upload an image smaller than 10MB",
+        variant: "destructive",
+      });
+      return;
+    }
+
+    try {
+      const formData = new FormData();
+      formData.append('image', file);
+
+      const response = await fetch('/api/upload', {
+        method: 'POST',
+        body: formData,
+      });
+
+      if (!response.ok) {
+        throw new Error('Upload failed');
+      }
+
+      const data = await response.json();
+      
+      // Set the uploaded image for preview
+      setUploadedImage({
+        url: data.imageUrl,
+        file: file
+      });
+      
+      toast({
+        title: "Image uploaded",
+        description: "Your reference image has been uploaded successfully",
+      });
+    } catch (error) {
+      toast({
+        title: "Upload failed",
+        description: "Failed to upload image. Please try again.",
+        variant: "destructive",
+      });
+    }
+  };
+
+  const handleDiscardImage = () => {
+    setUploadedImage(null);
+  };
+
   const handleSendMessage = () => {
-    if (!chatInput.trim() || chatMutation.isPending) return;
+    if (!chatInput.trim() && !uploadedImage) return;
 
     const userMessage: ChatMessage = {
       id: Date.now().toString(),
       content: chatInput,
       isUser: true,
       timestamp: new Date().toISOString(),
+      imageUrl: uploadedImage?.url
     };
 
     setLocalMessages(prev => [...prev, userMessage]);
@@ -89,6 +150,7 @@ export default function ChatInterface({
     });
 
     setChatInput("");
+    setUploadedImage(null);
   };
 
   const handleQuickAction = (action: string) => {
@@ -121,6 +183,33 @@ export default function ChatInterface({
     return date.toLocaleDateString();
   };
 
+  const handleDragOver = (e: React.DragEvent) => {
+    e.preventDefault();
+    setIsDragging(true);
+  };
+
+  const handleDragLeave = (e: React.DragEvent) => {
+    e.preventDefault();
+    setIsDragging(false);
+  };
+
+  const handleDrop = async (e: React.DragEvent) => {
+    e.preventDefault();
+    setIsDragging(false);
+
+    const files = e.dataTransfer.files;
+    if (files.length > 0) {
+      await handleFileUpload(files[0]);
+    }
+  };
+
+  const handleFileInputChange = (e: React.ChangeEvent<HTMLInputElement>) => {
+    const files = e.target.files;
+    if (files && files.length > 0) {
+      handleFileUpload(files[0]);
+    }
+  };
+
   return (
     <div className="space-y-6">
       {/* Main Chat Interface */}
@@ -151,6 +240,15 @@ export default function ChatInterface({
                   <i className={`${message.isUser ? 'fas fa-user' : 'fas fa-robot'} text-white text-sm`}></i>
                 </div>
                 <div className="flex-1">
+                  {message.imageUrl && (
+                    <div className="relative mb-2">
+                      <img 
+                        src={message.imageUrl} 
+                        alt="Uploaded reference" 
+                        className="rounded-lg max-w-xs max-h-48 object-contain"
+                      />
+                    </div>
+                  )}
                   <div className={`rounded-lg p-3 max-w-xs ${
                     message.isUser 
                       ? 'bg-[hsl(var(--amethyst))] text-white ml-auto' 
@@ -186,6 +284,21 @@ export default function ChatInterface({
 
           {/* Chat Input */}
           <div className="space-y-4">
+            {uploadedImage && (
+              <div className="relative inline-block">
+                <img 
+                  src={uploadedImage.url} 
+                  alt="Uploaded preview" 
+                  className="rounded-lg max-h-32 object-contain"
+                />
+                <button
+                  onClick={handleDiscardImage}
+                  className="absolute -top-2 -right-2 w-6 h-6 bg-red-500 text-white rounded-full flex items-center justify-center hover:bg-red-600 transition-colors"
+                >
+                  <i className="fas fa-times text-xs"></i>
+                </button>
+              </div>
+            )}
             <div className="relative">
               <Textarea
                 placeholder="Describe your design modifications..."
@@ -197,7 +310,7 @@ export default function ChatInterface({
               />
               <Button
                 onClick={handleSendMessage}
-                disabled={!chatInput.trim() || chatMutation.isPending || isGenerating}
+                disabled={(!chatInput.trim() && !uploadedImage) || chatMutation.isPending || isGenerating}
                 size="sm"
                 className="absolute bottom-3 right-3 bg-[hsl(var(--amethyst))] hover:bg-[hsl(var(--amethyst))]/90 text-white"
               >
@@ -225,16 +338,35 @@ export default function ChatInterface({
             <Button
               onClick={() => onGenerateDesign(chatInput || "Generate a new design variation")}
               disabled={isGenerating || !currentProject}
-              className="w-full bg-[hsl(var(--emerald))] hover:bg-[hsl(var(--emerald))]/90 text-white font-medium"
+              className="w-full bg-[hsl(var(--emerald))] hover:bg-[hsl(var(--emerald))]/90 text-black font-medium"
             >
               <i className="fas fa-magic mr-2"></i>
               {isGenerating ? "Generating..." : "Generate Design from Chat"}
             </Button>
 
             {/* File Upload Area */}
-            <div className="border-2 border-dashed border-border rounded-lg p-4 text-center hover:border-[hsl(var(--amethyst))] transition-colors cursor-pointer">
+            <div
+              className={`border-2 border-dashed rounded-lg p-4 text-center transition-colors cursor-pointer ${
+                isDragging 
+                  ? 'border-[#a78bfa] bg-[#a78bfa]/5' 
+                  : 'border-border hover:border-[#a78bfa]'
+              }`}
+              onDragOver={handleDragOver}
+              onDragLeave={handleDragLeave}
+              onDrop={handleDrop}
+              onClick={() => fileInputRef.current?.click()}
+            >
+              <input
+                type="file"
+                ref={fileInputRef}
+                className="hidden"
+                accept="image/*"
+                onChange={handleFileInputChange}
+              />
               <i className="fas fa-cloud-upload-alt text-2xl text-muted-foreground mb-2"></i>
-              <p className="text-sm text-muted-foreground">Drop reference images here or click to upload</p>
+              <p className="text-sm text-muted-foreground">
+                {isDragging ? 'Drop your image here' : 'Drop reference images here or click to upload'}
+              </p>
               <p className="text-xs text-muted-foreground">PNG, JPG up to 10MB</p>
             </div>
           </div>
